@@ -158,11 +158,13 @@ plt.tight_layout()
 plt.show()
 """
 
-threshold = [0.1*255, 0.2*255, 0.3*255, 0.4*255, 0.5*255, 0.6*255, 0.7*255, 0.8*255, 0.9*255]
+threshold = 0.8*255
 
-for t in threshold:
-    denoised_sharpened_keyboared = cv2.threshold(src=sharpened_keyboard, thresh=t, maxval=255, type=cv2.THRESH_BINARY)[1]
-    plt.figure()
-    plt.title(f"Thresh = {t}")
-    plt.imshow(denoised_sharpened_keyboared)
-    plt.show()
+denoised_sharpened_keyboared = cv2.threshold(sharpened_keyboard, threshold, 255, cv2.THRESH_BINARY)[1]
+fig343, axes = plt.subplots(1, 2, figsize=(10, 10))
+axes[0].imshow(sharpened_keyboard)
+axes[0].set_title("Sharpened Keyboard")
+axes[1].imshow(denoised_sharpened_keyboared)
+axes[1].set_title("Denoised Sharpened Keyboard")
+plt.tight_layout()
+plt.show()
