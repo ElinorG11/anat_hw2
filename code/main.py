@@ -70,6 +70,8 @@ plt.show()
 
 # ---------------------------------------------- Q2 ---------------------------------------------- #
 
+############### 2.a #####################
+
 def video_to_frames(vid_path: str, start_second, end_second):
     """
     Load a video and return its frames from the wanted time range.
@@ -91,17 +93,18 @@ def video_to_frames(vid_path: str, start_second, end_second):
     end_frame = end_second * fps
 
     frame_set = []
-
-    for i in range(end_frame + 1):
+    for i in range(end_frame):
         _, frame = video.read()
         if i >= start_frame:
             frame_set.append(frame)
-            plt.imshow(frame)
     # ========================
     return frame_set
 
 
-# fs = video_to_frames("/Users/erez/Documents/anat2/given_data/Corsica.mp4", 60 * 4 + 10, 60 * 4 + 20)
+###############################################
+
+
+################## 2.b ########################
 
 def match_corr(corr_obj, img):
     """
@@ -117,19 +120,94 @@ def match_corr(corr_obj, img):
     """
 
     # ====== YOUR CODE: ======
-    corr_obj = corr_obj.astype(np.float32)
+    filtered_image = np.zeros(img.shape, dtype=np.float32)
     img = img.astype(np.float32)
-    plt.imshow(corr_obj)
-    plt.show()
-    plt.imshow(img)
-    plt.show()
-
-    filtered_image = cv2.filter2D(img, 200, corr_obj, borderType=cv2.BORDER_CONSTANT)
-    plt.imshow(filtered_image)
-    plt.show()
+    corr_obj = corr_obj.astype(np.float32)
+    cv2.filter2D(img, -1, corr_obj, filtered_image, borderType=cv2.BORDER_CONSTANT)
+    match_coord = np.where(filtered_image == np.max(filtered_image))
     # ========================
-    match_coord = 5
-    return match_coord
+    return match_coord[0][0], match_coord[1][0]
+
+
+#################################################
+
+
+###################### 2.c ########################
+
+start_capture = 250
+stop_capture = 260
+frames = video_to_frames("/Users/erez/Documents/anat2/given_data/Corsica.mp4", start_capture, stop_capture)
+top_cut = int(frames[0].shape[0] / 3)
+left_cut = 7
+right_cut = 627
+frames = [cv2.cvtColor(frame[top_cut:, left_cut:right_cut], cv2.COLOR_BGR2GRAY) for frame in frames]
+
+##################################################
+
+
+##################### 2.d ##############################
+
+ref_frame = frames[int(len(frames) / 2)]
+panorama_shape = (ref_frame.shape[0], int(ref_frame.shape[1] * 2.5))
+panorama = np.zeros(panorama_shape, dtype=np.float32)
+ref_left_edge = int((panorama.shape[1] - ref_frame.shape[1]) / 2)
+ref_right_edge = int((panorama.shape[1] + ref_frame.shape[1]) / 2)
+panorama[:, ref_left_edge:ref_right_edge] = ref_frame
+plt.imshow(ref_frame, cmap='gray')
+plt.title("reference frame base")
+plt.show()
+plt.imshow(panorama, cmap='gray')
+plt.title("Panorama base")
+plt.show()
+
+# these are parameters the influence the final panorama result
+# edge ratio determines how early and late are the early and late frames
+# sub frame width determines what is subframe width to be used in match_corr
+edge_ratio = 9
+sub_frame_width = 200
+
+early_frame_index = int(len(frames) / edge_ratio)
+early_frame = frames[early_frame_index]
+
+late_frame_index = int(len(frames) * (1 - (1 / edge_ratio)))
+late_frame = frames[late_frame_index]
+
+
+###################################################################
+
+
+######################### 2.e ####################################
+
+
+width = ref_frame.shape[1]
+sub_early_frame = early_frame[:, :sub_frame_width]
+sub_late_frame = late_frame[:, width - sub_frame_width:]
+
+
+early_match_coord = match_corr(sub_early_frame, panorama)
+late_match_coord = match_corr(sub_late_frame, panorama)
+
+early_left_edge = early_match_coord[1] - int(sub_frame_width / 2)
+early_right_edge = early_left_edge + width
+
+late_right_edge = late_match_coord[1] + int(sub_frame_width / 2)
+late_left_edge = late_right_edge - width
+
+fig = plt.figure(figsize=(8, 8))
+early_plot = fig.add_subplot(1, 2, 1)
+early_plot.set_title(early_match_coord)
+plt.imshow(sub_early_frame, cmap='gray')
+late_plot = fig.add_subplot(1, 2, 2)
+late_plot.set_title(late_match_coord)
+plt.imshow(sub_late_frame, cmap='gray')
+plt.show()
+
+panorama[:, early_left_edge:early_right_edge] = early_frame
+panorama[:, late_left_edge:late_right_edge] = late_frame
+panorama[:, ref_left_edge:ref_right_edge] = ref_frame
+plt.imshow(panorama, cmap='gray')
+plt.title("final panorama")
+plt.show()
 
 
 # ---------------------------------------------- Q3 ---------------------------------------------- #
@@ -296,58 +374,27 @@ def denoise_by_l2(Y, X, num_iter, lambda_reg):
     Xcs = Ycs
     D = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
 
-    # M = (I + l * D.TD)Xk
-    Xcs_matrix = np.reshape(Xcs, Y.shape, order='F')  # Xcs transformed into a matrix
-    DX = cv2.filter2D(Xcs_matrix, -1, D)  # applying filter D on Xcs
-    DDX = cv2.filter2D(DX, -1, D)  # applying filter D on DXcs
-    M = (1 + lambda_reg) * DDX
-    Mcs = np.asmatrix(M).flatten('F')
-    Gcs = np.subtract(Mcs, Ycs)
+    Err1 = np.arange(num_iter)
+    Err2 = np.arange(num_iter)
 
-
-    # N = (I + l * D.TD)G
-    G = np.reshape(Gcs, Xcs.shape, order='F')  # Xcs transformed into a matrix
-    DG = cv2.filter2D(G, -1, D)  # applying filter D on Xcs
-    DDG = cv2.filter2D(DG, -1, D)  # applying filter D on DXcs
-    N = (1 + lambda_reg) * DDG
-    Ncs = np.asmatrix(N).flatten('F')
-
-    nomenator = np.matmul(Gcs, np.transpose(Gcs))
-    denomenator = np.matmul(Gcs, np.transpose(Ncs))
-
-    mu = (nomenator / denomenator)[0, 0]
-
-    Err1, Err2 = [], []
-
-    diff_noisy = np.subtract(Xcs, Ycs)
-    DXcs = np.asmatrix(DX).flatten('F')
-    err1 = np.matmul(diff_noisy, np.transpose(diff_noisy)) + lambda_reg * np.matmul(DXcs, np.transpose(DXcs))
-
-    Xcs_orig = np.asmatrix(X).flatten('F')
-    diff_orig = np.subtract(Xcs, Xcs_orig)
-    err2 = np.matmul(diff_orig, np.transpose(diff_orig))
-
-    Err1.append(err1[0, 0])
-    Err2.append(err2[0, 0])
-
-    for i in range(num_iter - 1):
+    for i in range(0, num_iter):
 
         # ------------------ UPDATE Gk ------------------ #
+
         # M = (I + l * D.TD)Xk
         Xcs_matrix = np.reshape(Xcs, Y.shape, order='F')  # Xcs transformed into a matrix
         DX = cv2.filter2D(Xcs_matrix, -1, D)  # applying filter D on Xcs
-        DDX = cv2.filter2D(DX, -1, D)  # applying filter D on DXcs
-        M = (1 + lambda_reg) * DDX
-        Mcs = np.asmatrix(M).flatten('F')
-        Gcs = np.subtract(Mcs, Ycs)
+        DDX = lambda_reg * cv2.filter2D(DX, -1, D)  # applying filter D on DXcs
+        DDXcs = np.asmatrix(DDX).flatten('F')
+        Gcs = Xcs + DDXcs - Ycs
 
         # ------------------ UPDATE MUk ------------------ #
         # N = (I + l * D.TD)G
-        G = np.reshape(Gcs, Xcs.shape, order='F')  # Xcs transformed into a matrix
+        G = np.reshape(Gcs, Y.shape, order='F')  # Xcs transformed into a matrix
         DG = cv2.filter2D(G, -1, D)  # applying filter D on Xcs
-        DDG = cv2.filter2D(DG, -1, D)  # applying filter D on DXcs
-        N = (1 + lambda_reg) * DDG
-        Ncs = np.asmatrix(N).flatten('F')
+        DDG = lambda_reg * cv2.filter2D(DG, -1, D)  # applying filter D on DXcs
+        DDGcs = np.asmatrix(DDG).flatten('F')
+        Ncs = np.add(Gcs, DDGcs)
 
         nomenator = np.matmul(Gcs, np.transpose(Gcs))
         denomenator = np.matmul(Gcs, np.transpose(Ncs))
@@ -355,33 +402,26 @@ def denoise_by_l2(Y, X, num_iter, lambda_reg):
         mu = (nomenator / denomenator)[0, 0]
 
         # ------------------ UPDATE Xk ------------------ #
-        Xcs = Xcs - mu * Gcs
+        Xcs = np.subtract(Xcs, mu * Gcs)
 
         # ------------------ UPDATE Error ------------------ #
-        diff_noisy = Xcs - Ycs
+        diff_noisy = np.subtract(Xcs, Ycs)
         DXcs = np.asmatrix(DX).flatten('F')
         err1 = np.matmul(diff_noisy, np.transpose(diff_noisy)) + lambda_reg * np.matmul(DXcs, np.transpose(DXcs))
 
         Xcs_orig = np.asmatrix(X).flatten('F')
-        diff_orig = Xcs - Xcs_orig
+        diff_orig = np.subtract(Xcs, Xcs_orig)
         err2 = np.matmul(diff_orig, np.transpose(diff_orig))
 
-        Err1.append(err1[0, 0])
-        Err2.append(err2[0, 0])
+        Err1[i] = err1[0, 0]
+        Err2[i] = err2[0, 0]
 
-    Xout = Xcs
+    Xout = Xcs_matrix
     # ========================
     return Xout, Err1, Err2
 
 
 denoised_img, Err1, Err2 = denoise_by_l2(Y, decreased_frame, 50, 0.5)
-
-fig421, ax = plt.subplots(figsize=(10, 10))
-ax.imshow(denoised_img, cmap='gray')
-ax.set_title("Denoised Image by L2")
-plt.tight_layout()
-plt.show()
-
 
 fig422, ax = plt.subplots(figsize=(10, 10))
 plt.plot(np.linspace(0, 50, 50), np.log(Err1), "-b", label="Err1")
@@ -390,3 +430,13 @@ plt.legend(loc="upper left")
 ax.set_title("Err1, Err2 vs Number of Iterations")
 plt.tight_layout()
 plt.show()
+
+fig421, axes = plt.subplots(1, 2, figsize=(10, 10))
+axes[0].imshow(Y, cmap='gray')
+axes[0].set_title("Noisy Image")
+axes[1].imshow(denoised_img, cmap='gray')
+axes[1].set_title("Denoised Image by L2")
+plt.tight_layout()
+plt.show()
+
+
