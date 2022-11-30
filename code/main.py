@@ -69,7 +69,6 @@ plt.show()
 
 
 # ---------------------------------------------- Q2 ---------------------------------------------- #
-
 ############### 2.a #####################
 
 def video_to_frames(vid_path: str, start_second, end_second):
@@ -97,6 +96,8 @@ def video_to_frames(vid_path: str, start_second, end_second):
         _, frame = video.read()
         if i >= start_frame:
             frame_set.append(frame)
+            # plt.imshow(frame)
+            # plt.show()
     # ========================
     return frame_set
 
@@ -125,18 +126,31 @@ def match_corr(corr_obj, img):
     corr_obj = corr_obj.astype(np.float32)
     cv2.filter2D(img, -1, corr_obj, filtered_image, borderType=cv2.BORDER_CONSTANT)
     match_coord = np.where(filtered_image == np.max(filtered_image))
+    # plt.imshow(img, cmap='gray')
+    # plt.show()
+    # plt.imshow(corr_obj, cmap='gray')
+    # plt.show()
+    # plt.imshow(filtered_image, cmap='gray')
+    # plt.plot(match_coord[1][0], match_coord[0][0], marker='o', color="red", linewidth=3)
+    # plt.show()
+    # return the coordinates of the max value
     # ========================
     return match_coord[0][0], match_coord[1][0]
 
 
 #################################################
 
+# very_cropped_image = cv2.imread("/Users/erez/Documents/anat2/given_data/elinor_filter.jpeg", 0)
+# cropped_image = cv2.imread("/Users/erez/Documents/anat2/given_data/bird.jpg", 0)
+# image = cv2.imread("/Users/erez/Documents/anat2/given_data/bird_full.jpg", 0)
+#
+# match_corr(cropped_image, image)
 
 ###################### 2.c ########################
 
 start_capture = 250
 stop_capture = 260
-frames = video_to_frames("/Users/erez/Documents/anat2/given_data/Corsica.mp4", start_capture, stop_capture)
+frames = video_to_frames("../given_data/Corsica.mp4", start_capture, stop_capture)
 top_cut = int(frames[0].shape[0] / 3)
 left_cut = 7
 right_cut = 627
@@ -144,6 +158,8 @@ frames = [cv2.cvtColor(frame[top_cut:, left_cut:right_cut], cv2.COLOR_BGR2GRAY) 
 
 ##################################################
 
+# plt.imshow(frames[14])
+# plt.show()
 
 ##################### 2.d ##############################
 
@@ -303,7 +319,7 @@ plt.show()
 
 # ---------------------------------------------- Q4 ---------------------------------------------- #
 
-frame = video_to_frames("../given_data/Flash Gordon Trailer.mp4", 20, 20)[0]
+frame = video_to_frames("../given_data/Flash Gordon Trailer.mp4", 20, 21)[0]
 
 fig411 = plt.figure()
 plt.imshow(frame)
@@ -439,4 +455,29 @@ axes[1].set_title("Denoised Image by L2")
 plt.tight_layout()
 plt.show()
 
+# Q4c
+frame = video_to_frames("../given_data/Flash Gordon Trailer.mp4", 38, 39)[0]
+
+fig431 = plt.figure()
+plt.imshow(frame)
+plt.show()
+
+red_channel_frame = frame[:, :, 2]
+fig432 = plt.figure()
+plt.imshow(red_channel_frame, cmap='gray')
+plt.show()
+
+width = int(red_channel_frame.shape[1] / 2)
+height = int(red_channel_frame.shape[0] / 2)
+dim = (width, height)
+decreased_frame = cv2.resize(red_channel_frame, dim)
+fig433 = plt.figure()
+plt.imshow(decreased_frame, cmap='gray')
+plt.show()
+
+Y = poisson_noisy_image(decreased_frame, 3)
+fig434 = plt.figure()
+plt.title("Resized Natural Image with Poisson Noise")
+plt.imshow(Y, cmap='gray')
+plt.show()
 
