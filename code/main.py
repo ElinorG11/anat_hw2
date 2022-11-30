@@ -481,3 +481,21 @@ plt.title("Resized Natural Image with Poisson Noise")
 plt.imshow(Y, cmap='gray')
 plt.show()
 
+denoised_img, Err1, Err2 = denoise_by_l2(Y, decreased_frame, 50, 0.5)
+
+fig4331, ax = plt.subplots(figsize=(10, 10))
+plt.plot(np.linspace(0, 50, 50), np.log(Err1), "-b", label="Err1")
+plt.plot(np.linspace(0, 50, 50), np.log(Err2), "-r", label="Err2")
+plt.legend(loc="upper left")
+ax.set_title("Err1, Err2 vs Number of Iterations for Natural Image")
+plt.tight_layout()
+plt.show()
+
+fig4332, axes = plt.subplots(1, 2, figsize=(10, 10))
+axes[0].imshow(Y, cmap='gray')
+axes[0].set_title("Noisy Natural Image")
+axes[1].imshow(denoised_img, cmap='gray')
+axes[1].set_title("Denoised Natural Image by L2")
+plt.tight_layout()
+plt.show()
+
