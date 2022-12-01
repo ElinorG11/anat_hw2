@@ -57,13 +57,22 @@ def gamma_correction(img, gamma):
 corrected_img_1 = gamma_correction(puppy_grayscale, 0.5)
 corrected_img_2 = gamma_correction(puppy_grayscale, 1.5)
 
-fig13, axes = plt.subplots(1, 3, figsize=(10, 10))
-axes[0].imshow(puppy_grayscale, cmap='gray')
-axes[0].set_title("Adorable Puppy in Grayscale")
-axes[1].imshow(corrected_img_1, cmap='gray')
-axes[1].set_title("Correction with Gamma=0.5")
-axes[2].imshow(corrected_img_2, cmap='gray')
-axes[2].set_title("Correction with Gamma=1.5")
+hist_1, bins_1 = np.histogram(corrected_img_1.ravel(), 256, [0, 255])
+hist_2, bins_2 = np.histogram(corrected_img_2.ravel(), 256, [0, 255])
+
+
+fig13, axes = plt.subplots(2, 3)
+axes[0, 0].imshow(puppy_grayscale, cmap='gray')
+axes[0, 0].set_title("Puppy\n in Grayscale")
+axes[0, 1].imshow(corrected_img_1, cmap='gray')
+axes[0, 1].set_title("Gamma=0.5")
+axes[0, 2].imshow(corrected_img_2, cmap='gray')
+axes[0, 2].set_title("Gamma=1.5")
+axes[1, 0].plot(hist)
+axes[1, 1].set_xlim([0, 255])
+axes[1, 1].plot(hist_1)
+axes[1, 2].set_xlim([0, 255])
+axes[1, 2].plot(hist_2)
 plt.tight_layout()
 plt.show()
 
@@ -92,15 +101,12 @@ def video_to_frames(vid_path: str, start_second, end_second):
     end_frame = end_second * fps
 
     frame_set = []
-    for i in range(end_frame):
+    for i in range(end_frame+1):
         _, frame = video.read()
         if i >= start_frame:
             frame_set.append(frame)
-            # plt.imshow(frame)
-            # plt.show()
     # ========================
     return frame_set
-
 
 ###############################################
 
@@ -126,25 +132,13 @@ def match_corr(corr_obj, img):
     corr_obj = corr_obj.astype(np.float32)
     cv2.filter2D(img, -1, corr_obj, filtered_image, borderType=cv2.BORDER_CONSTANT)
     match_coord = np.where(filtered_image == np.max(filtered_image))
-    # plt.imshow(img, cmap='gray')
-    # plt.show()
-    # plt.imshow(corr_obj, cmap='gray')
-    # plt.show()
-    # plt.imshow(filtered_image, cmap='gray')
-    # plt.plot(match_coord[1][0], match_coord[0][0], marker='o', color="red", linewidth=3)
-    # plt.show()
-    # return the coordinates of the max value
+
     # ========================
     return match_coord[0][0], match_coord[1][0]
 
 
 #################################################
 
-# very_cropped_image = cv2.imread("/Users/erez/Documents/anat2/given_data/elinor_filter.jpeg", 0)
-# cropped_image = cv2.imread("/Users/erez/Documents/anat2/given_data/bird.jpg", 0)
-# image = cv2.imread("/Users/erez/Documents/anat2/given_data/bird_full.jpg", 0)
-#
-# match_corr(cropped_image, image)
 
 ###################### 2.c ########################
 
@@ -224,7 +218,6 @@ panorama[:, ref_left_edge:ref_right_edge] = ref_frame
 plt.imshow(panorama, cmap='gray')
 plt.title("final panorama")
 plt.show()
-
 
 # ---------------------------------------------- Q3 ---------------------------------------------- #
 
@@ -319,7 +312,7 @@ plt.show()
 
 # ---------------------------------------------- Q4 ---------------------------------------------- #
 
-frame = video_to_frames("../given_data/Flash Gordon Trailer.mp4", 20, 21)[0]
+frame = video_to_frames("../given_data/Flash Gordon Trailer.mp4", 20, 20)[0]
 
 fig411 = plt.figure()
 plt.imshow(frame)
@@ -351,7 +344,7 @@ def poisson_noisy_image(X, a):
     X = X.astype(float)
     X = X * a
 
-    N = np.array(np.random.poisson(a, X.shape))
+    N = np.array(np.random.poisson(a, X.shape)) * 30
     N = N.astype(float)
     X = np.add(X, N)
 
@@ -455,8 +448,9 @@ axes[1].set_title("Denoised Image by L2")
 plt.tight_layout()
 plt.show()
 
+
 # Q4c
-frame = video_to_frames("../given_data/Flash Gordon Trailer.mp4", 38, 39)[0]
+frame = video_to_frames("../given_data/Flash Gordon Trailer.mp4", 38, 38)[0]
 
 fig431 = plt.figure()
 plt.imshow(frame)
@@ -470,18 +464,18 @@ plt.show()
 width = int(red_channel_frame.shape[1] / 2)
 height = int(red_channel_frame.shape[0] / 2)
 dim = (width, height)
-decreased_frame = cv2.resize(red_channel_frame, dim)
+decreased_frame2 = cv2.resize(red_channel_frame, dim)
 fig433 = plt.figure()
-plt.imshow(decreased_frame, cmap='gray')
+plt.imshow(decreased_frame2, cmap='gray')
 plt.show()
 
-Y = poisson_noisy_image(decreased_frame, 3)
+Y = poisson_noisy_image(decreased_frame2, 3)
 fig434 = plt.figure()
 plt.title("Resized Natural Image with Poisson Noise")
 plt.imshow(Y, cmap='gray')
 plt.show()
 
-denoised_img, Err1, Err2 = denoise_by_l2(Y, decreased_frame, 50, 0.5)
+denoised_img, Err1, Err2 = denoise_by_l2(Y, decreased_frame2, 50, 0.5)
 
 fig4331, ax = plt.subplots(figsize=(10, 10))
 plt.plot(np.linspace(0, 50, 50), np.log(Err1), "-b", label="Err1")
