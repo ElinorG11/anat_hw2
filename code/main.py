@@ -182,6 +182,14 @@ early_frame = frames[early_frame_index]
 late_frame_index = int(len(frames) * (1 - (1 / edge_ratio)))
 late_frame = frames[late_frame_index]
 
+fig24, axes = plt.subplots(1, 2, figsize=(10, 10))
+axes[0].imshow(early_frame, cmap='gray')
+axes[0].set_title("Early Frame")
+axes[1].imshow(late_frame, cmap='gray')
+axes[1].set_title("Late Frame")
+plt.tight_layout()
+plt.show()
+
 
 ###################################################################
 
